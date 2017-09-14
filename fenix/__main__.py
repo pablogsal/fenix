@@ -2,23 +2,11 @@ from __future__ import print_function
 
 import functools
 import inspect
+import types
 import sys
 from optparse import OptionParser
 
 from fenix import serializers
-
-
-def _add_custom(func):
-    @functools.wraps(func)
-    def wrapper(object):
-        if hasattr(object,"d_class") and object.d_class == "frame":
-            object = object.f_code
-        return func(object)
-    return wrapper
-
-
-inspect.findsource = _add_custom(inspect.findsource)
-
 
 def main():
     parser = OptionParser(usage="%prog <filename.dump> [options]", description="pydump v%s: post-mortem debugging for Python programs" % serializers.__version__)

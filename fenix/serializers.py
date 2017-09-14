@@ -3,13 +3,26 @@ from __future__ import print_function
 import gzip
 import linecache
 import sys
+import types
 
 import dill as pickle
 import pdb
 
-from fenix.wrappers import PhoenixTraceback
+from fenix.wrappers import PhoenixTraceback, PhoenixCode, PhoenixFrame
 
 __version__ = "1.1.1"
+
+def iscode(object):
+    return isinstance(object, (PhoenixCode,types.CodeType))
+
+def isframe(object):
+    return isinstance(object, (PhoenixFrame,types.FrameType))
+
+def monkey_patch_inspect():
+    import inspect
+    inspect.iscode = iscode
+    inspect.isframe = isframe
+
 
 
 def save_dump(filename, traceback=None):
@@ -39,6 +52,7 @@ def debug_dump(filename, post_mortem_func=pdb.post_mortem):
     tb.inject_local_scope()
     _old_checkcache = linecache.checkcache
     linecache.checkcache = lambda filename=None: None
+    monkey_patch_inspect()
     post_mortem_func(tb)
     linecache.checkcache = _old_checkcache
 

@@ -37,13 +37,13 @@ class PhoenixObject(object):
         self.d_class = str(obj.__class__.__name__)
         for key in filter(lambda x: not x.startswith("__"), dir(obj)):
             value = getattr(obj, key)
-            if serializable(value):
+            val_type = type(value)
+            if val_type in self._mappings:
+                setattr(self, key, self._mappings[val_type](value))
+            elif serializable(value):
                 setattr(self, key, value)
             else:
-                val_type = type(value)
-                if val_type in self._mappings:
-                    setattr(self, key, self._mappings[val_type](value))
-                elif key in ("f_locals", "f_globals"):
+                if key in ("f_locals", "f_globals"):
                     setattr(self, key, {k: val if serializable(val)
                             else str(val) for k, val in value.items()})
                 else:
@@ -98,7 +98,7 @@ class PhoenixFrame(PhoenixObject):
     @_apply_over_frames
     def remove_builtins(self):
         globals_ = self.f_globals
-        valid_keys = globals_.keys() - builtins_.keys()
+        valid_keys = six.viewkeys(globals_) - six.viewkeys(builtins_)
         setattr(self, "f_globals", {key: globals_[key] for key in valid_keys})
 
     @_apply_over_frames
@@ -119,3 +119,10 @@ class PhoenixFrame(PhoenixObject):
                 files[filename] = open(filename).read()
             except IOError:
                 files[filename] = "couldn't locate '%s' during dump" % self.f_code.co_filename
+
+class PhoenixCode(PhoenixObject):
+    _phoenix_type = types.CodeType
+    def __init__(self,obj):
+        super().__init__(obj)
+        self.co_filename = os.path.abspath(self.co_filename)
+
