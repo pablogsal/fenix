@@ -60,13 +60,8 @@ class Momo(object):
 
 
 def main():
-    try:
-        foo()
-    except:
-        filename = __file__ + '.dump'
-        print("Exception caught, writing %s" % filename)
-        dump_management.save_dump(filename)
-        print("Run 'pydump %s' to debug" % (filename))
+    foo()
+
 
 
 if __name__ == '__main__':

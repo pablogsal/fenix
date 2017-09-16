@@ -2,50 +2,49 @@
 
 from __future__ import print_function
 
-import functools
-import inspect
 import sys
-from optparse import OptionParser
-
+import argparse
+import traceback
 from fenix import dump_management
 
+parser = argparse.ArgumentParser(prog='fenix')
+subparsers = parser.add_subparsers(title='fenix commands',
+                                   description='fenix commands',
+                                   help='additional help',dest="fenix_command")
+run_parser = subparsers.add_parser("run")
+run_parser.add_argument("file",type=str)
+revive_parser = subparsers.add_parser("revive")
+revive_parser.add_argument("file",type=str)
+revive_parser.add_argument("--pdb", action="append_const", const="pdb", dest="debuggers", help="Use builtin pdb or pdb++")
+revive_parser.add_argument("--pudb", action="append_const", const="pudb", dest="debuggers", help="Use pudb visual debugger")
+revive_parser.add_argument("--ipdb", action="append_const", const="ipdb", dest="debuggers", help="Use ipdb IPython debugger")
+args = parser.parse_args()
 
-def _add_custom(func):
-    @functools.wraps(func)
-    def wrapper(object):
-        if hasattr(object,"d_class") and object.d_class == "frame":
-            object = object.f_code
-        return func(object)
-    return wrapper
+__file__ = args.file
+
+def fenix_hook(type, value, traceback_):
+    filename = __file__ + '.dump'
+    dump_management.save_dump(filename, traceback_)
+    traceback.print_tb(traceback_.tb_next.tb_next)
 
 
-inspect.findsource = _add_custom(inspect.findsource)
+if args.fenix_command == "run":
+    sys.excepthook = fenix_hook
+    exec(compile(open(args.file).read(), __file__, 'exec'))
+else:
+    if not args.debuggers:
+        args.debuggers = ["pdb"]
 
-
-parser = OptionParser(usage="%prog <filename.dump> [options]", description="pydump : post-mortem debugging for Python programs")
-parser.add_option("--pdb",  action="append_const", const="pdb",  dest="debuggers", help="Use builtin pdb or pdb++")
-parser.add_option("--pudb", action="append_const", const="pudb", dest="debuggers", help="Use pudb visual debugger")
-parser.add_option("--ipdb", action="append_const", const="ipdb", dest="debuggers", help="Use ipdb IPython debugger")
-(options, args) = parser.parse_args()
-
-if len(args) < 1:
-    parser.print_help()
-    sys.exit(1)
-
-if not options.debuggers:
-    options.debuggers = ["pdb"]
-
-for debugger in options.debuggers:
-    try:
-        dbg = __import__(debugger)
-    except ImportError as e:
-        print(str(e), file=sys.stderr)
-        continue
-    else:
-        print("Starting %s..." % debugger, file=sys.stderr)
-        if debugger == "pudb":
-            dump_management.debug_dump(args[0], lambda tb: dbg.post_mortem(tb))
+    for debugger in args.debuggers:
+        try:
+            dbg = __import__(debugger)
+        except ImportError as e:
+            print(str(e), file=sys.stderr)
+            continue
         else:
-            dump_management.debug_dump(args[0])
-        break
-
+            print("Starting %s..." % debugger, file=sys.stderr)
+            if debugger == "pudb":
+                dump_management.debug_dump(args.file, lambda tb: dbg.post_mortem(tb))
+            else:
+                dump_management.debug_dump(args.file)
+            break

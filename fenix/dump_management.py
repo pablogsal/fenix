@@ -4,6 +4,7 @@ import gzip
 import linecache
 import sys
 import types
+import functools
 
 import dill as pickle
 import pdb
@@ -18,8 +19,19 @@ def iscode(object):
 def isframe(object):
     return isinstance(object, (PhoenixFrame,types.FrameType))
 
+def intercept_with_custom_types(func):
+    @functools.wraps(func)
+    def wrapper(obj):
+        if hasattr(obj, "d_class") and obj.d_class == "frame":
+            obj = obj.f_code
+        return func(obj)
+
+    return wrapper
+
+
 def monkey_patch_inspect():
     import inspect
+    inspect.findsource = intercept_with_custom_types(inspect.findsource)
     inspect.iscode = iscode
     inspect.isframe = isframe
 
@@ -45,13 +57,13 @@ def load_dump(filename):
 
 
 def debug_dump(filename, post_mortem_func=pdb.post_mortem):
+    monkey_patch_inspect()
     dump = load_dump(filename)
     _cache_files(dump['files'])
     tb = dump['traceback']
     tb.prepare_for_deserialization()
     _old_checkcache = linecache.checkcache
     linecache.checkcache = lambda filename=None: None
-    monkey_patch_inspect()
     post_mortem_func(tb)
     linecache.checkcache = _old_checkcache
 

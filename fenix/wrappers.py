@@ -27,7 +27,6 @@ class PhoenixMeta(type):
 @six.add_metaclass(PhoenixMeta)
 class PhoenixObject(object):
     def __init__(self, obj):
-        self.d_class = str(obj.__class__.__name__)
         for key in filter(lambda x: not x.startswith("__"), dir(obj)):
             value = getattr(obj, key)
             val_type = type(value)
