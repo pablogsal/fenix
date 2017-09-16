@@ -41,16 +41,6 @@ class PhoenixObject(object):
                     setattr(self, "__tracebackhide__", True)
 
 
-def _apply_over_tracebacks(method):
-    def wrapper(self, *args, **kwargs):
-        first_result = method(self, *args, **kwargs)
-        if getattr(self, "tb_next", None) is not None:
-            return getattr(self.tb_next, method.__name__)(*args, **kwargs)
-        return first_result
-
-    return wrapper
-
-
 def remove_builtins(frame):
     globals_ = frame.f_globals
     valid_keys = six.viewkeys(globals_) - six.viewkeys(builtins_)
@@ -104,19 +94,19 @@ class PhoenixTraceback(PhoenixObject):
         while traceback:
             frame = traceback.tb_frame
             while frame:
-                get_traceback_files(frame,files)
+                get_traceback_files(frame, files)
                 frame = frame.f_back
             traceback = traceback.tb_next
         return files
 
 
-
 class PhoenixFrame(PhoenixObject):
     _phoenix_type = types.FrameType
+
 
 class PhoenixCode(PhoenixObject):
     _phoenix_type = types.CodeType
 
     def __init__(self, obj):
-        super().__init__(obj)
+        super(PhoenixCode, self).__init__(obj)
         self.co_filename = os.path.abspath(self.co_filename)
