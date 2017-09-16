@@ -7,7 +7,7 @@ import inspect
 import sys
 from optparse import OptionParser
 
-from fenix import serializers
+from fenix import dump_management
 
 
 def _add_custom(func):
@@ -22,7 +22,7 @@ def _add_custom(func):
 inspect.findsource = _add_custom(inspect.findsource)
 
 
-parser = OptionParser(usage="%prog <filename.dump> [options]", description="pydump v%s: post-mortem debugging for Python programs" % serializers.__version__)
+parser = OptionParser(usage="%prog <filename.dump> [options]", description="pydump : post-mortem debugging for Python programs")
 parser.add_option("--pdb",  action="append_const", const="pdb",  dest="debuggers", help="Use builtin pdb or pdb++")
 parser.add_option("--pudb", action="append_const", const="pudb", dest="debuggers", help="Use pudb visual debugger")
 parser.add_option("--ipdb", action="append_const", const="ipdb", dest="debuggers", help="Use ipdb IPython debugger")
@@ -44,8 +44,8 @@ for debugger in options.debuggers:
     else:
         print("Starting %s..." % debugger, file=sys.stderr)
         if debugger == "pudb":
-            serializers.debug_dump(args[0], lambda tb: dbg.post_mortem(tb))
+            dump_management.debug_dump(args[0], lambda tb: dbg.post_mortem(tb))
         else:
-            serializers.debug_dump(args[0])
+            dump_management.debug_dump(args[0])
         break
 

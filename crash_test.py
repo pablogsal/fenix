@@ -1,8 +1,9 @@
 import pickle
 
 import numpy as np
+import collections
 
-from fenix import serializers
+from fenix import dump_management
 
 bbb = 1
 
@@ -35,7 +36,8 @@ def foo():
 def bar():
     barvar = "hello"
     lel = np.arange(100)
-    list_sample = [1, 2, 3, 4]
+    list_sample = [1, 2, 3, 4,A()]
+    s = collections.OrderedDict(s=4,stuff=A())
     dict_sample = {'a': 1, 'b': 2}
     return baz()
 
@@ -63,7 +65,7 @@ def main():
     except:
         filename = __file__ + '.dump'
         print("Exception caught, writing %s" % filename)
-        serializers.save_dump(filename)
+        dump_management.save_dump(filename)
         print("Run 'pydump %s' to debug" % (filename))
 
 

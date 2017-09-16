@@ -1,7 +1,9 @@
-import types
 import os
+import types
+
 import six
-import dill as pickle
+
+from fenix.serializers import serialize_generic_obj, serializable
 
 try:
     import builtins
@@ -9,15 +11,6 @@ try:
     builtins_ = builtins.__dict__
 except ImportError:
     builtins_ = __builtins__
-
-
-def serializable(obj):
-    try:
-        pickle.dumps(obj)
-    except:
-        return False
-    else:
-        return True
 
 
 class PhoenixMeta(type):
@@ -44,8 +37,7 @@ class PhoenixObject(object):
                 setattr(self, key, value)
             else:
                 if key in ("f_locals", "f_globals"):
-                    setattr(self, key, {k: val if serializable(val)
-                            else str(val) for k, val in value.items()})
+                    setattr(self, key, serialize_generic_obj(value))
                 else:
                     setattr(self, "__tracebackhide__", True)
 
@@ -60,69 +52,72 @@ def _apply_over_tracebacks(method):
     return wrapper
 
 
+def remove_builtins(frame):
+    globals_ = frame.f_globals
+    valid_keys = six.viewkeys(globals_) - six.viewkeys(builtins_)
+    setattr(frame, "f_globals", {key: globals_[key] for key in valid_keys})
+
+
+def inject_builtins(frame):
+    frame.f_globals.update(builtins_)
+
+
+def inject_local_scope(frame):
+    items = list(frame.f_locals.values())
+    for val in (item for item in items if hasattr(item, "__globals__")):
+        val.__globals__.update(frame.f_globals)
+
+
+def get_traceback_files(frame, files):
+    filename = os.path.abspath(frame.f_code.co_filename)
+    if filename not in files:
+        try:
+            files[filename] = open(filename).read()
+        except IOError:
+            files[filename] = "couldn't locate '%s' during dump" % self.f_code.co_filename
+
+
 class PhoenixTraceback(PhoenixObject):
     _phoenix_type = types.TracebackType
 
-    @_apply_over_tracebacks
-    def remove_builtins(self):
-        self.tb_frame.remove_builtins()
+    def prepare_for_serialization(self):
+        traceback = self
+        while traceback:
+            frame = traceback.tb_frame
+            while frame:
+                remove_builtins(frame)
+                frame = frame.f_back
+            traceback = traceback.tb_next
 
-    @_apply_over_tracebacks
-    def inject_builtins(self):
-        self.tb_frame.inject_builtins()
+    def prepare_for_deserialization(self):
+        traceback = self
+        while traceback:
+            frame = traceback.tb_frame
+            while frame:
+                inject_builtins(frame)
+                inject_local_scope(frame)
+                frame = frame.f_back
+            traceback = traceback.tb_next
 
-    @_apply_over_tracebacks
-    def inject_local_scope(self):
-        self.tb_frame.inject_local_scope()
-
-    @_apply_over_tracebacks
-    def get_traceback_files(self, files=None):
-        if files is None:
-            files = {}
-        self.tb_frame.get_traceback_files(files)
+    def get_traceback_files(self):
+        files = {}
+        traceback = self
+        while traceback:
+            frame = traceback.tb_frame
+            while frame:
+                get_traceback_files(frame,files)
+                frame = frame.f_back
+            traceback = traceback.tb_next
         return files
 
-
-def _apply_over_frames(method):
-    def wrapper(self, *args, **kwargs):
-        method(self, *args, **kwargs)
-        if getattr(self, "f_back", None) is not None:
-            return getattr(self.f_back, method.__name__)(*args, **kwargs)
-
-    return wrapper
 
 
 class PhoenixFrame(PhoenixObject):
     _phoenix_type = types.FrameType
 
-    @_apply_over_frames
-    def remove_builtins(self):
-        globals_ = self.f_globals
-        valid_keys = six.viewkeys(globals_) - six.viewkeys(builtins_)
-        setattr(self, "f_globals", {key: globals_[key] for key in valid_keys})
-
-    @_apply_over_frames
-    def inject_builtins(self):
-        self.f_globals.update(builtins_)
-
-    @_apply_over_frames
-    def inject_local_scope(self):
-        items = list(self.f_locals.values())
-        for val in (item for item in items if hasattr(item, "__globals__")):
-            val.__globals__.update(self.f_globals)
-
-    @_apply_over_frames
-    def get_traceback_files(self, files):
-        filename = os.path.abspath(self.f_code.co_filename)
-        if filename not in files:
-            try:
-                files[filename] = open(filename).read()
-            except IOError:
-                files[filename] = "couldn't locate '%s' during dump" % self.f_code.co_filename
-
 class PhoenixCode(PhoenixObject):
     _phoenix_type = types.CodeType
-    def __init__(self,obj):
+
+    def __init__(self, obj):
         super().__init__(obj)
         self.co_filename = os.path.abspath(self.co_filename)
-
