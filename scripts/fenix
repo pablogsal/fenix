@@ -13,6 +13,7 @@ subparsers = parser.add_subparsers(title='fenix commands',
                                    help='additional help',dest="fenix_command")
 run_parser = subparsers.add_parser("run")
 run_parser.add_argument("file",type=str)
+run_parser.add_argument("--args",action="store",dest="cmd_args")
 revive_parser = subparsers.add_parser("revive")
 revive_parser.add_argument("file",type=str)
 revive_parser.add_argument("--pdb", action="append_const", const="pdb", dest="debuggers", help="Use builtin pdb or pdb++")
@@ -29,8 +30,10 @@ def fenix_hook(type, value, traceback_):
 
 
 if args.fenix_command == "run":
+    print(args.cmd_args.split())
+    sys.argv = args.cmd_args.split()
     sys.excepthook = fenix_hook
-    exec(compile(open(args.file).read(), __file__, 'exec'))
+    exec(compile(open(__file__).read(), __file__, 'exec'))
 else:
     if not args.debuggers:
         args.debuggers = ["pdb"]

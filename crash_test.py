@@ -65,4 +65,11 @@ def main():
 
 
 if __name__ == '__main__':
+    # print("I am main")
+    # import argparse
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("foo")
+    # parser.add_argument("--bar")
+    # parser.add_argument("baz")
+    # print(parser.parse_args())
     main()

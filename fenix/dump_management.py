@@ -38,6 +38,12 @@ def monkey_patch_inspect():
 
 
 def save_dump(filename, traceback=None):
+    dump = prepare_dump(traceback)
+    with gzip.open(filename, 'wb') as f:
+        pickle.dump(dump, f)
+
+
+def prepare_dump(traceback):
     if traceback is None:
         traceback = sys.exc_info()[2]
     traceback = PhoenixTraceback(traceback)
@@ -47,18 +53,16 @@ def save_dump(filename, traceback=None):
         'traceback': traceback,
         'files': traceback_files,
     }
-    with gzip.open(filename, 'wb') as f:
-        pickle.dump(dump, f)
-
-
-def load_dump(filename):
-    with gzip.open(filename, 'rb') as f:
-        return pickle.load(f)
+    return dump
 
 
 def debug_dump(filename, post_mortem_func=pdb.post_mortem):
-    monkey_patch_inspect()
-    dump = load_dump(filename)
+    with gzip.open(filename, 'rb') as f:
+        monkey_patch_inspect()
+        return process_dump(pickle.load(f), post_mortem_func)
+
+
+def process_dump(dump, post_mortem_func=pdb.post_mortem):
     _cache_files(dump['files'])
     tb = dump['traceback']
     tb.prepare_for_deserialization()
