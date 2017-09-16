@@ -7,47 +7,72 @@ import argparse
 import traceback
 from fenix import dump_management
 
-parser = argparse.ArgumentParser(prog='fenix')
-subparsers = parser.add_subparsers(title='fenix commands',
-                                   description='fenix commands',
-                                   help='additional help',dest="fenix_command")
-run_parser = subparsers.add_parser("run")
-run_parser.add_argument("file",type=str)
-run_parser.add_argument("--args",action="store",dest="cmd_args")
-revive_parser = subparsers.add_parser("revive")
-revive_parser.add_argument("file",type=str)
-revive_parser.add_argument("--pdb", action="append_const", const="pdb", dest="debuggers", help="Use builtin pdb or pdb++")
-revive_parser.add_argument("--pudb", action="append_const", const="pudb", dest="debuggers", help="Use pudb visual debugger")
-revive_parser.add_argument("--ipdb", action="append_const", const="ipdb", dest="debuggers", help="Use ipdb IPython debugger")
-args = parser.parse_args()
 
-__file__ = args.file
+def get_parser():
+    parser = argparse.ArgumentParser(prog='fenix')
+    subparsers = parser.add_subparsers(
+        title='fenix commands',
+        description='fenix commands',
+        help='additional help',
+        dest="fenix_command")
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument("file", type=str)
+    run_parser.add_argument("--args", action="store", dest="cmd_args")
+    revive_parser = subparsers.add_parser("revive")
+    revive_parser.add_argument("file", type=str)
+    revive_parser.add_argument(
+        "--pdb",
+        action="append_const",
+        const="pdb",
+        dest="debuggers",
+        help="Use builtin pdb or pdb++")
+    revive_parser.add_argument(
+        "--pudb",
+        action="append_const",
+        const="pudb",
+        dest="debuggers",
+        help="Use pudb visual debugger")
+    revive_parser.add_argument(
+        "--ipdb",
+        action="append_const",
+        const="ipdb",
+        dest="debuggers",
+        help="Use ipdb IPython debugger")
+    return parser
 
-def fenix_hook(type, value, traceback_):
-    filename = __file__ + '.dump'
-    dump_management.save_dump(filename, traceback_)
-    traceback.print_tb(traceback_.tb_next.tb_next)
 
+if __name__ == "__main__":
 
-if args.fenix_command == "run":
-    print(args.cmd_args.split())
-    sys.argv = args.cmd_args.split()
-    sys.excepthook = fenix_hook
-    exec(compile(open(__file__).read(), __file__, 'exec'))
-else:
-    if not args.debuggers:
-        args.debuggers = ["pdb"]
+    parser = get_parser()
+    args = parser.parse_args()
 
-    for debugger in args.debuggers:
-        try:
-            dbg = __import__(debugger)
-        except ImportError as e:
-            print(str(e), file=sys.stderr)
-            continue
-        else:
-            print("Starting %s..." % debugger, file=sys.stderr)
-            if debugger == "pudb":
-                dump_management.debug_dump(args.file, lambda tb: dbg.post_mortem(tb))
+    __file__ = args.file
+
+    def fenix_hook(type, value, traceback_):
+        filename = __file__ + '.dump'
+        dump_management.save_dump(filename, traceback_)
+        traceback.print_tb(traceback_.tb_next.tb_next)
+
+    if args.fenix_command == "run":
+        print(args.cmd_args.split())
+        sys.argv = args.cmd_args.split()
+        sys.excepthook = fenix_hook
+        exec(compile(open(__file__).read(), __file__, 'exec'))
+    else:
+        if not args.debuggers:
+            args.debuggers = ["pdb"]
+
+        for debugger in args.debuggers:
+            try:
+                dbg = __import__(debugger)
+            except ImportError as e:
+                print(str(e), file=sys.stderr)
+                continue
             else:
-                dump_management.debug_dump(args.file)
-            break
+                print("Starting %s..." % debugger, file=sys.stderr)
+                if debugger == "pudb":
+                    dump_management.debug_dump(args.file,
+                                               lambda tb: dbg.post_mortem(tb))
+                else:
+                    dump_management.debug_dump(args.file)
+                break
