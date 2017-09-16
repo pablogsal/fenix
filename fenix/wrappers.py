@@ -41,16 +41,6 @@ class PhoenixObject(object):
                     setattr(self, "__tracebackhide__", True)
 
 
-def _apply_over_tracebacks(method):
-    def wrapper(self, *args, **kwargs):
-        first_result = method(self, *args, **kwargs)
-        if getattr(self, "tb_next", None) is not None:
-            return getattr(self.tb_next, method.__name__)(*args, **kwargs)
-        return first_result
-
-    return wrapper
-
-
 def remove_builtins(frame):
     globals_ = frame.f_globals
     valid_keys = six.viewkeys(globals_) - six.viewkeys(builtins_)
