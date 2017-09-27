@@ -6,4 +6,4 @@ Fenix is a tool to produce core-dumps that are compatible with python debugger t
 
 # How to use Fenix?
 
-Check the [documentation](https://github.dev.bloomberg.com/pages/pgalindo3/fenix/)
+Check the [documentation](https://pablogsal.github.io/fenix/)
