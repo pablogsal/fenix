@@ -94,19 +94,19 @@ class PhoenixTraceback(PhoenixObject):
         while traceback:
             frame = traceback.tb_frame
             while frame:
-                get_traceback_files(frame,files)
+                get_traceback_files(frame, files)
                 frame = frame.f_back
             traceback = traceback.tb_next
         return files
 
 
-
 class PhoenixFrame(PhoenixObject):
     _phoenix_type = types.FrameType
+
 
 class PhoenixCode(PhoenixObject):
     _phoenix_type = types.CodeType
 
     def __init__(self, obj):
-        super().__init__(obj)
+        super(PhoenixCode, self).__init__(obj)
         self.co_filename = os.path.abspath(self.co_filename)

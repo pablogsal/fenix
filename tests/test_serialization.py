@@ -1,15 +1,18 @@
+import collections
+import sys
+
 import pytest
+import dill as pickle
 
 from fenix import dump_management
-import dill as pickle
-import collections
-
 
 @pytest.fixture
 def prepare_function():
-    code = ("def test_func(input):\n    local_var=input"
+    code = ("import sys\n"
+            "def test_func(input):\n    local_var=input"
             "\n    try:\n        1/0\n    except ZeroDivisionError as e:"
-            "\n        return e")
+            "\n        ex_type, ex, tb = sys.exc_info()"
+            "\n        return tb")
     local_dict = {}
     exec(compile(code, __file__, "exec"), local_dict)
     return local_dict["test_func"]
@@ -24,7 +27,7 @@ def test_serialization(prepare_function):
 
     # WHEN
 
-    traceback = test_func(local_var).__traceback__
+    traceback = (test_func(local_var))
     dump = dump_management.prepare_dump(traceback)
     dump["traceback"].tb_frame.f_back = None
 
@@ -59,7 +62,7 @@ def test_serialization_of_unpickable_obj(prepare_function):
 
     # WHEN
 
-    traceback = test_func(local_var).__traceback__
+    traceback = (test_func(local_var))
     dump = dump_management.prepare_dump(traceback)
     dump["traceback"].tb_frame.f_back = None
 
@@ -97,7 +100,7 @@ def test_serialization_of_unpickable_obj_in_container(prepare_function):
 
     # WHEN
 
-    traceback = test_func(local_var).__traceback__
+    traceback = (test_func(local_var))
     dump = dump_management.prepare_dump(traceback)
     dump["traceback"].tb_frame.f_back = None
 
